@@ -1,0 +1,35 @@
+Exploring what happens when packets are lost
+
+Packets are lost when either link drops them due to insufficient buffer size or due to stochastic loss (not implementing now)
+
+
+A HACKY SOLUTION
+Rather than look at all the acks in SwitchedSender::receive_feedback which is both inefficient and tedious, I plan to account for them when the decision for losing them is made. This is not the modular option but is very efficient and easy to implement.
+
+Flow of information about a lost packet:
+1. Link decides to drop a packet, either due to buffer overflow or due to stochastic loss
+
+
+ALTERNATIVE SOLUTION (THIS IS BEING ADOPTED NOW)
+In this plan, I propose to drop packets as they should be dropped. That is, when Link decides to drop a packet, it simply does not forward it. When receive_feedback parses the packets that Receiver received, it (assuming no reordering) notes the number of lost packets (linear time here, but shouldn't change the overall order of the algorithm). In ByteSwitchedSender we can simply increase pacets_sent_cap_ by that amount to ensure that the extra sumber of packets are transmitted. In this proposal, I do not plan to work with TimeSwitchedSender as it also does not seem to make sense to talk about packet loss in such a system in such a manner.
+Further I modify Utility so that it keeps track of the loss rate. This is done by looking at the sequence number of the received packets
+
+Note: Unlike what is described above, right now, I am not keeping track of lost packets. Hopefully the results should be similar enough. This is for speed purposes.
+
+
+
+Rough Change Notes:
+Link
+	- Modify the _limit while constructing Link object
+	- To make above modification, I need to change NetConfig (done), Network (done), Evaluator (done), ConfigurationRange (done), rat-runner.cc(done), remy.cc (done)
+	- What should the default buffer size be like? Ans. 10% ofbandwidth-delay product
+Memory
+	- Define a proper metric for the loss rate
+	- Make the comparison operators consider loss rate too (after defining a proper metric)
+	- See how large the packets vector is going to be in packets_received. If this is too short, our method of tracking the number of lost packets will fail
+SenderGang
+	- Make the senders ByteSwitchedSender because that makes more sense here, especially if I implement the packet loss detector.
+ProtocolBuffers
+	- ConfigRange's DNA needs to be changed among the DNAs of other things
+Evaluator
+	- In initializing the configs, I only take the lower value of link_limit to restrict the number of non-random configurations on which Remy runs (from 8 to 4)
