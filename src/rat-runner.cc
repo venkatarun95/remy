@@ -77,6 +77,7 @@ int main( int argc, char *argv[] )
   configuration_range.max_senders = num_senders;
   configuration_range.mean_on_duration = mean_on_duration;
   configuration_range.mean_off_duration = mean_off_duration;
+  configuration_range.drop_rate = make_pair( 0.0, 1.0 );
   configuration_range.lo_only = true;
 
   Evaluator eval( configuration_range );

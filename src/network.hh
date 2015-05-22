@@ -20,6 +20,7 @@ public:
   double link_ppt;
   unsigned int link_limit;
   double delay;
+  double drop_rate;
 
   NetConfig( void )
     : mean_on_duration( 5000.0 ),
@@ -27,7 +28,8 @@ public:
       num_senders( 8 ),
       link_ppt( 1.0 ),
       link_limit( std::numeric_limits<unsigned int>::max() ),
-      delay( 150 )
+      delay( 150 ),
+      drop_rate( 0 )
   {}
 
   NetConfig( const RemyBuffers::NetConfig & dna )
@@ -36,7 +38,8 @@ public:
       num_senders( dna.num_senders() ),
       link_ppt( dna.link_ppt() ),
       link_limit( dna.link_limit() ),
-      delay( dna.delay() )
+      delay( dna.delay() ),
+      drop_rate( dna.drop_rate() )
   {}
   
   NetConfig & set_link_ppt( const double s_link_ppt ) { link_ppt = s_link_ppt; return *this; }
@@ -45,6 +48,7 @@ public:
   NetConfig & set_num_senders( const unsigned int n ) { num_senders = n; return *this; }
   NetConfig & set_on_duration( const double & duration ) { mean_on_duration = duration; return *this; }
   NetConfig & set_off_duration( const double & duration ) { mean_off_duration = duration; return *this; }
+  NetConfig & set_drop_rate( const double s_drop_rate) { drop_rate = s_drop_rate; return *this; }
 
   RemyBuffers::NetConfig DNA( void ) const
   {
@@ -55,6 +59,7 @@ public:
       ret.set_delay( delay );
       ret.set_link_ppt( link_ppt );
       ret.set_link_limit( link_limit );
+      ret.set_drop_rate( drop_rate );
 
       return ret;
   }
@@ -62,8 +67,8 @@ public:
   std::string str( void ) const
   {
     char tmp[ 256 ];
-    snprintf( tmp, 256, "mean_on=%f, mean_off=%f, nsrc=%d, link_ppt=%f, delay=%f, link_limit=%u\n",
-	      mean_on_duration, mean_off_duration, num_senders, link_ppt, delay, link_limit );
+    snprintf( tmp, 256, "mean_on=%f, mean_off=%f, nsrc=%d, link_ppt=%f, delay=%f, link_limit=%u, drop_rate=%f\n",
+	      mean_on_duration, mean_off_duration, num_senders, link_ppt, delay, link_limit, drop_rate );
     return tmp;
   }
 };
