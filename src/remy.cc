@@ -43,6 +43,7 @@ int main( int argc, char *argv[] )
 
   ConfigRange configuration_range;
   configuration_range.link_packets_per_ms = make_pair( 1.0, 2.0 ); /* 10 Mbps to 20 Mbps */
+  configuration_range.link_limit = make_pair( 10, 40 ); /* calculated as 0.1 * rtt_ms * link_ppt for min and max values */
   configuration_range.rtt_ms = make_pair( 100, 200 ); /* ms */
   configuration_range.max_senders = 16;
   configuration_range.mean_on_duration = 5000;
@@ -56,6 +57,9 @@ int main( int argc, char *argv[] )
   printf( "Optimizing for link packets_per_ms in [%f, %f]\n",
 	  configuration_range.link_packets_per_ms.first,
 	  configuration_range.link_packets_per_ms.second );
+  printf( "Optimizing for buffer size in link in [%u, %u]\n", 
+    configuration_range.link_limit.first,
+    configuration_range.link_limit.second);
   printf( "Optimizing for rtt_ms in [%f, %f]\n",
 	  configuration_range.rtt_ms.first,
 	  configuration_range.rtt_ms.second );

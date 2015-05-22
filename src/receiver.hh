@@ -5,6 +5,9 @@
 
 #include "packet.hh"
 
+// Accepts packets from senders and stores them against each sender
+// 	Senders (objects of classes extending SenderGang<SenderType>::SwitchedSender) directly call Receiver::accept
+// 	Stores until  until feedback (performance metrics) can be taken in <SenderType>::SwitchedSender::receive_feedback which calls Receiver::clear()
 class Receiver
 {
 private:

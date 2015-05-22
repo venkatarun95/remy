@@ -2,6 +2,7 @@ Exploring what happens when packets are lost
 
 Packets are lost when either link drops them due to insufficient buffer size or due to stochastic loss (not implementing now)
 
+#########################################################################
 
 A HACKY SOLUTION
 Rather than look at all the acks in SwitchedSender::receive_feedback which is both inefficient and tedious, I plan to account for them when the decision for losing them is made. This is not the modular option but is very efficient and easy to implement.
@@ -16,9 +17,9 @@ Further I modify Utility so that it keeps track of the loss rate. This is done b
 
 Note: Unlike what is described above, right now, I am not keeping track of lost packets. Hopefully the results should be similar enough. This is for speed purposes.
 
+#########################################################################
 
-
-Rough Change Notes:
+Rough Change Notes For Making the Buffer Finite:
 Link
 	- Modify the _limit while constructing Link object
 	- To make above modification, I need to change NetConfig (done), Network (done), Evaluator (done), ConfigurationRange (done), rat-runner.cc(done), remy.cc (done)
@@ -33,3 +34,56 @@ ProtocolBuffers
 	- ConfigRange's DNA needs to be changed among the DNAs of other things
 Evaluator
 	- In initializing the configs, I only take the lower value of link_limit to restrict the number of non-random configurations on which Remy runs (from 8 to 4)
+
+
+#########################################################################
+
+ADDING LOSS AS A SIGNAL
+
+The Signal - Fraction of packets lost in the previous RTT (Can be loose on the precise value of 'since previous RTT'. The algorithm should not be very sensitive to this). More specifically, it is the fraction of packets lost between the last acknowledged packet and one RTT estimate before that ( either ewma of rtt or _min_rtt*_rtt_ratio )
+
+Note: This fraction is scaled to 163840, so that it matches with the other signals
+
+I will also remove slow_rewma
+
+Things Needing Change
+	- memory.cc and memory.h - Yes (naturally)
+	- memoryrange? - Nope. Very modular and generic code
+	- WhiskerTree? - Nope
+	- Whisker - Yes
+	- WhiskerImprover? - Nope
+	- Ratbreeder? - Nope
+	- Rat - Nope
+	- rat-templates.cc, rat-runner.cc, remy.cc, scoring-example.cc - Nope
+	- Network, SenderGang, SenderGangofGangs, ConfigRange, Aimd, Evaluator, Link, Packet, Receiver, Utility - Nope
+	- Protoc Definition - Probably
+
+Things to Change When Changing Rignals to Remy
+Memory
+	- First modify the varaibles in the class definition
+	- packets_received: The main site of action where all the variables that are being tracked are changed
+	- str: for printing the quantities
+	- datasize: the number of signals that we are giving remy
+	- Modify MAX_MEMORY to suit new needs
+	- The constructors
+	- The DNA generator
+
+Whisker
+	- Whisker::next_generation - modify the for loops that generate the options
+	- No need to modify this at all!! But I feel too bad about erasing this section becaue it is half a day's work. So this stays.
+
+Protocol Buffers
+	- Just change RemyBuffers::Memory to the updated signals. Not much to be done here	
+
+Things Actually Changed
+	- Added _num_packets_received, _num_packets_lost as variables
+	- Removed _num_packets_lost and _num_packets_received
+	- Added _lost_packets and _all_packets_in_rtt_window which are queues of packets
+	- Added an _rtt_estimate
+	- Made a queue (_lost_packets) that has all packets from latest received to one rtt estimate before that
+	- Removed _largest_ack as _all_packets_in_rtt_window is now there
+	- Modified RemyBuffers::Memory
+	-Added _largest_ack back as _all_packets_in_rtt_window can get empty too
+
+Points To Note
+	- WARNING - question - does having extra elements in the object affect whatever is done with the calculated hash value? This function doesn't seem to be called from anywhere

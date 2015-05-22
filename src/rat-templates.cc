@@ -16,6 +16,7 @@ void Rat::send( const unsigned int id, NextHop & next, const double & tickno,
     const Whisker & current_whisker( _whiskers.use_whisker( _memory, _track ) );
     _the_window = current_whisker.window( _the_window );
     _intersend_time = current_whisker.intersend();
+    //assert(_the_window != 0 ); //edit - venkat - just to ensure that a sender doesn't stay 0 forever because right now, I believe that memory will never be called if no packets are sent. But something tells me that my understanding is incorrect
   }
 
   if ( (_packets_sent < _largest_ack + 1 + _the_window)

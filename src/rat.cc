@@ -22,6 +22,7 @@ Rat::Rat( WhiskerTree & s_whiskers, const bool s_track )
 void Rat::packets_received( const vector< Packet > & packets ) {
   _packets_received += packets.size();
   /* Assumption: There is no reordering */
+  /* Even if packets are lost, this should still work */
   _largest_ack = max( packets.at( packets.size() - 1 ).seq_num, _largest_ack );
   _memory.packets_received( packets, _flow_id );
 
