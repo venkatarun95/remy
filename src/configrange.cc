@@ -22,5 +22,7 @@ RemyBuffers::ConfigRange ConfigRange::DNA( void ) const
   ret.set_mean_off_duration( mean_off_duration );
   ret.set_mean_on_duration( mean_on_duration );
 
+  ret.mutable_drop_rate()->CopyFrom( pair_to_range( drop_rate ) );
+
   return ret;
 }

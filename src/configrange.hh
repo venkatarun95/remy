@@ -20,7 +20,8 @@ public:
   unsigned int max_senders { 16 };
   double mean_on_duration { 1000 };
   double mean_off_duration { 1000 };
-  // If true, Evaluator loads all corner points in the hypercube as configurations
+  std::pair< double, double > drop_rate { 0.0, 0.5 }; // The rate at which link drops packets stochastically.
+  // If true, Evaluator loads all corner points in the hypercube as configurations along with some random points
   // else it loads only the lower limit and chooses all other configurations randomly
   bool lo_only { false };
 

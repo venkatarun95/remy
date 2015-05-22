@@ -48,6 +48,7 @@ int main( int argc, char *argv[] )
   configuration_range.max_senders = 16;
   configuration_range.mean_on_duration = 5000;
   configuration_range.mean_off_duration = 5000;
+  configuration_range.drop_rate = make_pair( 0.01, 0.1 );
   //  configuration_range.lo_only = true;
   RatBreeder breeder( configuration_range );
 
@@ -67,6 +68,7 @@ int main( int argc, char *argv[] )
 	  configuration_range.max_senders );
   printf( "Optimizing for mean_on_duration = %f, mean_off_duration = %f\n",
 	  configuration_range.mean_on_duration, configuration_range.mean_off_duration );
+  printf( "Optimizing for drop rate in [%f, %f]\n", configuration_range.drop_rate.first, configuration_range.drop_rate.second );
 
   printf( "Initial rules (use if=FILENAME to read from disk): %s\n", whiskers.str().c_str() );
   printf( "#######################\n" );
