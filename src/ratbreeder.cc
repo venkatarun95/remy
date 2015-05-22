@@ -43,6 +43,9 @@ Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
   whiskers.reset_generation();
   unsigned int generation = 0;
 
+  const unsigned int max_generation = 5;
+  printf("No. generations before split: %d\n", max_generation);
+
   while ( generation < 5 ) {
     const Evaluator eval( _range );
 

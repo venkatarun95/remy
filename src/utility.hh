@@ -3,9 +3,11 @@
 
 #include <cmath>
 
+// Tracks the utility variables that we are interested in
 class Utility
 {
 private:
+  // Total time for which sending was taking place. Used to calculate throughput.
   double _tick_share_sending;
   unsigned int _packets_received;
   double _total_delay;

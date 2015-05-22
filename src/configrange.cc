@@ -15,6 +15,7 @@ RemyBuffers::ConfigRange ConfigRange::DNA( void ) const
 {
   RemyBuffers::ConfigRange ret;
   ret.mutable_link_packets_per_ms()->CopyFrom( pair_to_range( link_packets_per_ms ) );
+  ret.mutable_link_limit()->CopyFrom( pair_to_range( link_packets_per_ms ) );
   ret.mutable_rtt()->CopyFrom( pair_to_range( rtt_ms ) );
   ret.mutable_num_senders()->CopyFrom( pair_to_range( make_pair( min_senders, max_senders ) ) );
 

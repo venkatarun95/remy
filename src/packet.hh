@@ -6,6 +6,8 @@ class Packet
 public:
   unsigned int src;
   unsigned int flow_id;
+  // tick_sent is filled by Rat::packets_received which in turn is called by SwitchedSender::?::tick. 
+  // tick_received is filled by
   double tick_sent, tick_received;
   int seq_num;
 

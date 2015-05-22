@@ -6,6 +6,8 @@
 #include "packet.hh"
 #include "delay.hh"
 
+// Simulates a link.
+//  Accepts packets and forward them to NextHop (supplied by tick function in network.cc)
 class Link
 {
 private:
@@ -17,7 +19,7 @@ private:
 
 public:
   Link( const double s_rate,
-	const unsigned int s_limit = std::numeric_limits<unsigned int>::max() )
+	const unsigned int s_limit )
     : _buffer(), _pending_packet( 1.0 / s_rate ), _limit( s_limit ) {}
 
   void accept( const Packet & p, const double & tickno ) noexcept {
@@ -27,6 +29,7 @@ public:
       if ( _buffer.size() < _limit ) {
         _buffer.push( p );
       }
+      // else, drop the packet
     }
   }
 
