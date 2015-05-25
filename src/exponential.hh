@@ -5,6 +5,10 @@
 
 #include "random.hh"
 
+
+//	A simple wrapper for the boost exponential distribution generator
+//	 usage:	Exponential exp_distribution_;
+//          double val = exp_distribution_.sample();
 class Exponential
 {
 private:

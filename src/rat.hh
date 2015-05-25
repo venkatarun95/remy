@@ -25,6 +25,7 @@ private:
   double _intersend_time;
 
   unsigned int _flow_id;
+  // This represents the largest sequence number from among the packets recieved (via packets_recieved) from SenderGang. So this is not the ACK in the traditional sense but is 
   int _largest_ack;
 
 public:
