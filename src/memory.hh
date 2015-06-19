@@ -21,25 +21,29 @@ private:
   double _last_tick_received;
   double _min_rtt;
 
+  double _link_speed;
+
 public:
-  Memory( const std::vector< DataType > & s_data )
+  Memory( const std::vector< DataType > & s_data, const double s_link_speed )
     : _rec_send_ewma( s_data.at( 0 ) ),
       _rec_rec_ewma( s_data.at( 1 ) ),
       _rtt_ratio( s_data.at( 2 ) ),
       _slow_rec_rec_ewma( s_data.at( 3 ) ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
-      _min_rtt( 0 )
+      _min_rtt( 0 ),
+      _link_speed( s_link_speed )
   {}
 
-  Memory()
+  Memory( double s_link_speed=-1 )
     : _rec_send_ewma( 0 ),
       _rec_rec_ewma( 0 ),
       _rtt_ratio( 0.0 ),
       _slow_rec_rec_ewma( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
-      _min_rtt( 0 )
+      _min_rtt( 0 ),
+      _link_speed( s_link_speed )
   {}
 
   void reset( void ) { _rec_send_ewma = _rec_rec_ewma = _rtt_ratio = _slow_rec_rec_ewma = _last_tick_sent = _last_tick_received = _min_rtt = 0; }

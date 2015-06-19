@@ -12,6 +12,7 @@ static const double slow_alpha = 1.0 / 256.0;
 
 void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id )
 {
+  assert( _link_speed > 0 );
   for ( const auto &x : packets ) {
     if ( x.flow_id != flow_id ) {
       continue;
@@ -23,9 +24,9 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
       _last_tick_received = x.tick_received;
       _min_rtt = rtt;
     } else {
-      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
+      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) / _link_speed;
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received)  / _link_speed;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) / _link_speed;
 
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
@@ -46,7 +47,7 @@ string Memory::str( void ) const
 
 const Memory & MAX_MEMORY( void )
 {
-  static const Memory max_memory( { 163840, 163840, 163840, 163840 } );
+  static const Memory max_memory( { 163840, 163840, 163840, 163840 }, -1 );
   return max_memory;
 }
 
@@ -71,7 +72,8 @@ Memory::Memory( const bool is_lower_limit, const RemyBuffers::Memory & dna )
     _slow_rec_rec_ewma( get_val_or_default( dna, slow_rec_rec_ewma, is_lower_limit ) ),
     _last_tick_sent( 0 ),
     _last_tick_received( 0 ),
-    _min_rtt( 0 )
+    _min_rtt( 0 ),
+    _link_speed( -1 )
 {
 }
 

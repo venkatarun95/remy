@@ -23,12 +23,13 @@ private:
 
   int _the_window;
   double _intersend_time;
+  double _link_speed; //for normalizing
 
   unsigned int _flow_id;
   int _largest_ack;
 
 public:
-  Rat( WhiskerTree & s_whiskers, const bool s_track=false );
+  Rat( WhiskerTree & s_whiskers, const double link_speed, const bool s_track=false );
 
   void packets_received( const std::vector< Packet > & packets );
   void reset( const double & tickno ); /* start new flow */

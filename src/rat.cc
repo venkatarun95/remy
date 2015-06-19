@@ -5,15 +5,16 @@
 
 using namespace std;
 
-Rat::Rat( WhiskerTree & s_whiskers, const bool s_track )
+Rat::Rat( WhiskerTree & s_whiskers, const double link_speed, const bool s_track )
   :  _whiskers( s_whiskers ),
-     _memory(),
+     _memory( link_speed ),
      _packets_sent( 0 ),
      _packets_received( 0 ),
      _track( s_track ),
      _last_send_time( 0 ),
      _the_window( 0 ),
      _intersend_time( 0 ),
+     _link_speed( link_speed ),
      _flow_id( 0 ),
      _largest_ack( -1 )
 {
@@ -27,8 +28,10 @@ void Rat::packets_received( const vector< Packet > & packets ) {
 
   const Whisker & current_whisker( _whiskers.use_whisker( _memory, _track ) );
 
-  _the_window = current_whisker.window( _the_window );
-  _intersend_time = current_whisker.intersend();
+  assert( _link_speed > 0 );
+
+  _the_window = current_whisker.window( _the_window ) * _link_speed;
+  _intersend_time = current_whisker.intersend() / _link_speed;
 }
 
 void Rat::reset( const double & )
