@@ -28,6 +28,7 @@ class RatBreeder
 private:
   ConfigRange _range;
 
+  void save_temp_whiskers( WhiskerTree & whiskers ) const;
   void apply_best_split( WhiskerTree & whiskers, const unsigned int generation ) const;
 
 public:

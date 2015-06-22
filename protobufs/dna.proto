@@ -30,6 +30,8 @@ message Whisker {
   optional double intersend = 33;
 
   optional MemoryRange domain = 34;
+
+  optional uint32 generation = 35 [default = 0];
 }
 
 message OptimizationSetting {

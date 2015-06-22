@@ -113,12 +113,13 @@ RemyBuffers::Whisker Whisker::DNA( void ) const
   ret.set_window_multiple( _window_multiple );
   ret.set_intersend( _intersend );
   ret.mutable_domain()->CopyFrom( _domain.DNA() );
+  ret.set_generation( _generation );
 
   return ret;
 }
 
 Whisker::Whisker( const RemyBuffers::Whisker & dna )
-  : _generation( 0 ),
+  : _generation( dna.generation() ),
     _window_increment( dna.window_increment() ),
     _window_multiple( dna.window_multiple() ),
     _intersend( dna.intersend() ),

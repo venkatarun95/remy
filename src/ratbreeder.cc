@@ -3,6 +3,7 @@
 #include <cassert>
 #include <future>
 #include <limits>
+#include <fcntl.h>
 
 #include "ratbreeder.hh"
 
@@ -33,6 +34,36 @@ void RatBreeder::apply_best_split( WhiskerTree & whiskers, const unsigned int ge
   }
 }
 
+void RatBreeder::save_temp_whiskers( WhiskerTree & whiskers ) const
+{
+  static uint saved_whiskers_id = 0;
+  char outfile_name[ 128 ];
+  sprintf( outfile_name, "tmp_saved_whiskers.%d", saved_whiskers_id );
+  saved_whiskers_id = ( saved_whiskers_id + 1 ) % 2;
+  fprintf( stderr, "Writing temporary whiskers to \"%s\"... ", outfile_name );
+  int fd = open( outfile_name, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR );
+  if ( fd < 0 ) {
+    perror( "open" );
+    exit( 1 );
+  }
+
+  auto remycc = whiskers.DNA();
+  remycc.mutable_config()->CopyFrom( _range.DNA() );
+  remycc.mutable_optimizer()->CopyFrom( Whisker::get_optimizer().DNA() );
+
+  if ( not remycc.SerializeToFileDescriptor( fd ) ) {
+    fprintf( stderr, "Could not serialize RemyCC.\n" );
+    exit( 1 );
+  }
+
+  if ( close( fd ) < 0 ) {
+    perror( "close" );
+    exit( 1 );
+  }
+
+  fprintf( stderr, "done.\n" );
+}
+
 Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
 {
   /* back up the original whiskertree */
@@ -40,7 +71,7 @@ Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
   WhiskerTree input_whiskertree( whiskers );
 
   /* evaluate the whiskers we have */
-  whiskers.reset_generation();
+  //whiskers.reset_generation();
   unsigned int generation = 0;
 
   while ( generation < 5 ) {
@@ -75,6 +106,7 @@ Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
 	cerr << "Score jumps from " << score_to_beat << " to " << new_score << endl;
 	score_to_beat = new_score;
       }
+      save_temp_whiskers( whiskers );
     }
 
     whisker_to_improve.demote( generation + 1 );
@@ -125,7 +157,7 @@ double WhiskerImprover::improve( Whisker & whisker_to_improve )
 				    WhiskerTree replaced_whiskertree( rat );
 				    const bool found_replacement __attribute((unused)) = replaced_whiskertree.replace( r );
 				    assert( found_replacement );
-				    return make_pair( true, e.score( replaced_whiskertree ).score ); },
+ 				    return make_pair( true, e.score( replaced_whiskertree ).score ); },
 				  eval_, test_replacement, rat_ ) );
     } else {
       /* we already know the score */
