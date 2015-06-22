@@ -34,7 +34,7 @@ public:
   const double & intersend( void ) const { return _intersend; }
   const MemoryRange & domain( void ) const { return _domain; }
 
-  std::vector< Whisker > next_generation( void ) const;
+  std::vector< Whisker > next_generation( int& cur_direction_id, int search_mode, int num_alternatives ) const;
 
   void promote( const unsigned int generation );
 
@@ -67,7 +67,7 @@ public:
 
     T default_value;
 
-    std::vector< T > alternatives( const T & value ) const;
+    std::vector< T > alternatives( const T & value, int num_alternatives, int change_direction ) const;
     bool eligible_value( const T & value ) const;
 
     RemyBuffers::OptimizationSetting DNA( void ) const
@@ -105,9 +105,12 @@ public:
 
   static const OptimizationSettings & get_optimizer( void ) {
     static OptimizationSettings default_settings {
-      { 0,    256, 1,    32,  4, 1 }, /* window increment */
-      { 0,    1,   0.01, 0.5, 4, 1 }, /* window multiple */
-      { 0.25, 3,   0.05, 1,   4, 3 } /* intersend */
+      //{ 0,    256, 1,    32,  4, 1 }, /* window increment */
+      //{ 0,    1,   0.01, 0.5, 4, 1 }, /* window multiple */
+      //{ 0.25, 3,   0.05, 1,   4, 3 } /* intersend */
+      { 0,    256, 1,    32,  2, 128 }, /* window increment */
+      { 0,    1,   0.01, 0.5, 2, 0.5 }, /* window multiple */
+      { 0.25, 3,   0.05, 1,   2, 1.6 } /* intersend */
     };
     return default_settings;
   }

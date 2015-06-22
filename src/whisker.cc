@@ -43,51 +43,111 @@ bool Whisker::OptimizationSetting< T >::eligible_value( const T & value ) const
 }
 
 template < typename T >
-vector< T > Whisker::OptimizationSetting< T >::alternatives( const T & value ) const
+vector< T > Whisker::OptimizationSetting< T >::alternatives( const T & value, int num_alternatives, int change_direction ) const
 {
   assert( eligible_value( value ) );
 
-  vector< T > ret( 1, value );
+  vector< T > ret;//( 1, value );
 
   for ( T proposed_change = min_change;
 	proposed_change <= max_change;
 	proposed_change *= multiplier ) {
     /* explore positive change */
-    const T proposed_value_up = value + proposed_change;
-    const T proposed_value_down = value - proposed_change;
-
-    if ( eligible_value( proposed_value_up ) ) {
-      ret.push_back( proposed_value_up );
+    const T proposed_value = ( value + proposed_change * change_direction );
+    
+    if ( eligible_value( proposed_value ) ) {
+      ret.push_back( proposed_value );
     }
 
-    if ( eligible_value( proposed_value_down ) ) {
-      ret.push_back( proposed_value_down );
-    }
+    if ( ret.size() >= num_alternatives )
+        break;
   }
 
   return ret;
 }
 
-vector< Whisker > Whisker::next_generation( void ) const
+vector< Whisker >  Whisker::next_generation( int& cur_direction_id, int search_mode, int num_alternatives ) const
 {
+  // if search_mode = 0, return values exploring various directions
+  // else return values exploring one direction in a geometric manner, starting at the power of search_mode's value
   vector< Whisker > ret;
 
-  for ( const auto & alt_window : get_optimizer().window_increment.alternatives( _window_increment ) ) {
-    for ( const auto & alt_multiple : get_optimizer().window_multiple.alternatives( _window_multiple ) ) {
-      for ( const auto & alt_intersend : get_optimizer().intersend.alternatives( _intersend ) ) {
-	Whisker new_whisker { *this };
-	new_whisker._generation++;
+  if ( search_mode == 0 ){
+    int init_direction_id = cur_direction_id;
+    for ( int i = 0;i < num_alternatives; i++ ){
+      Whisker new_whisker { *this };
+      new_whisker._generation++;
 
-	new_whisker._window_increment = alt_window;
-	new_whisker._window_multiple = alt_multiple;
-	new_whisker._intersend = alt_intersend;
+      int change_direction = ( cur_direction_id >= 3 ) ? 1 : -1;
 
-	new_whisker.round();
-
-	ret.push_back( new_whisker );
+      switch ( cur_direction_id % 3 ){
+        case 0:
+          new_whisker._intersend += change_direction * get_optimizer().intersend.min_change;
+        break;
+        case 1:
+          new_whisker._window_multiple += change_direction * get_optimizer().window_multiple.min_change;
+        break;
+        case 2:
+          new_whisker._window_increment += change_direction * get_optimizer().window_increment.min_change;
+        break;
+        default:
+          assert( false );
       }
+
+      new_whisker.round();
+      cur_direction_id = ( cur_direction_id + 1) % 6;
+
+      if( !( get_optimizer().intersend.eligible_value( new_whisker._intersend ) &&
+              get_optimizer().window_multiple.eligible_value( new_whisker._window_multiple ) &&
+              get_optimizer().window_increment.eligible_value( new_whisker._window_increment ) ) ){
+        i --;
+        continue;
+      }
+
+      ret.push_back( new_whisker );
+
+
+      if( init_direction_id == cur_direction_id )
+        break;
+    }
+
+    assert( ret.size() >= 3 );
+  }
+  else{
+    int change_direction = ( cur_direction_id >= 3 ) ? 1 : -1;
+    switch ( cur_direction_id % 3 ){
+      case 0:
+        for ( const auto & alt : get_optimizer().intersend.alternatives( _intersend, num_alternatives, change_direction ) ){
+          Whisker new_whisker { *this };
+          new_whisker._generation++;
+          new_whisker._intersend = alt;
+          new_whisker.round();
+          ret.push_back( new_whisker );
+        }
+      break;
+      case 1:
+        for ( const auto & alt : get_optimizer().window_multiple.alternatives( _window_multiple, num_alternatives, change_direction ) ){
+          Whisker new_whisker { *this };
+          new_whisker._generation++;
+          new_whisker._window_multiple = alt;
+          new_whisker.round();
+          ret.push_back( new_whisker );
+        }
+      break;
+      case 2:
+        for ( const auto & alt : get_optimizer().window_increment.alternatives( _window_increment, num_alternatives, change_direction ) ){
+          Whisker new_whisker { *this };
+          new_whisker._generation++;
+          new_whisker._window_increment = alt;
+          new_whisker.round();
+          ret.push_back( new_whisker );
+        }
+      break;
+      default:
+        assert( false );
     }
   }
+
 
   return ret;
 }
