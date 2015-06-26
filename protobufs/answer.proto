@@ -16,3 +16,9 @@ message Outcome {
   repeated ThroughputsDelays throughputs_delays = 32;
   optional double score = 33;
 }
+
+message Result {
+	optional RemyBuffers.NetConfig config = 41;
+	repeated SenderResults results = 42;
+	optional double score = 43;
+}

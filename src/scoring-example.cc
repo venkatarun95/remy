@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "communicator.hh"
 #include "evaluator.hh"
 
 using namespace std;
@@ -75,7 +76,8 @@ int main( int argc, char *argv[] )
   configuration_range.mean_off_duration = mean_off_duration;
   configuration_range.lo_only = true;
 
-  Evaluator eval( configuration_range );
+  /*JobGeneratorCommunicator communicator( 6003 );
+  Evaluator eval( configuration_range, communicator );
 
   // save problem to file
   ProblemBuffers::Problem serialized_problem = eval.DNA( whiskers );
@@ -174,5 +176,5 @@ int main( int argc, char *argv[] )
 
   printf( "Whiskers: %s\n", outcome.used_whiskers.str().c_str() );
 
-  return 0;
+  return 0;*/
 }

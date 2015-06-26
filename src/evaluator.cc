@@ -9,9 +9,10 @@
 
 const unsigned int TICK_COUNT = 1000000;
 
-Evaluator::Evaluator( const ConfigRange & range )
+Evaluator::Evaluator( const ConfigRange & range, JobGeneratorCommunicator& s_communicator )
   : _prng_seed( global_PRNG()() ), /* freeze the PRNG seed for the life of this Evaluator */
-    _configs()
+    _configs(),
+    communicator( s_communicator )
 {
   /* first load "anchors" */
   _configs.push_back( NetConfig().set_link_ppt( range.link_packets_per_ms.first ).set_delay( range.rtt_ms.first ).set_num_senders( range.max_senders ).set_on_duration( range.mean_on_duration ).set_off_duration( range.mean_off_duration ) );
@@ -34,7 +35,9 @@ Evaluator::Evaluator( const ConfigRange & range )
   }
 }
 
-ProblemBuffers::Problem Evaluator::DNA( const WhiskerTree & whiskers ) const
+ProblemBuffers::Problem Evaluator::DNA( const WhiskerTree & whiskers,
+    const NetConfig & config,
+    const unsigned int ticks_to_run ) const
 {
   ProblemBuffers::Problem ret;
 
@@ -42,32 +45,45 @@ ProblemBuffers::Problem Evaluator::DNA( const WhiskerTree & whiskers ) const
 
   ProblemBuffers::ProblemSettings settings;
   settings.set_prng_seed( _prng_seed );
-  settings.set_tick_count( TICK_COUNT );
+  settings.set_tick_count( ticks_to_run );
 
   ret.mutable_settings()->CopyFrom( settings );
 
-  for ( auto &x : _configs ) {
+  ret.mutable_config()->CopyFrom( config.DNA() );
+
+  /*for ( auto &x : _configs ) {
     RemyBuffers::NetConfig *config = ret.add_configs();
     *config = x.DNA();
-  }
+  }*/
 
   return ret;
 }
 
-Evaluator::Outcome Evaluator::parse_problem_and_evaluate( const ProblemBuffers::Problem & problem )
+AnswerBuffers::Result Evaluator::parse_problem_and_evaluate( const ProblemBuffers::Problem & problem )
 {
-  vector<NetConfig> configs;
-  for ( const auto &x : problem.configs() ) {
-    configs.emplace_back( x );
-  }
+  PRNG run_prng( problem.settings().prng_seed() );
 
   WhiskerTree run_whiskers = WhiskerTree( problem.whiskers() );
+  run_whiskers.reset_counts();
 
-  return Evaluator::score( run_whiskers, problem.settings().prng_seed(),
-			   configs, false, problem.settings().tick_count() );
+  /* run tests */
+  Network<Rat, Rat> network1( Rat( run_whiskers, false ), run_prng, problem.config() );
+  network1.run_simulation( problem.settings().tick_count() );
+
+  AnswerBuffers::Result result;
+  
+  result.set_score( network1.senders().utility() );
+
+  for( auto & x : network1.senders().throughputs_delays() ){
+    AnswerBuffers::SenderResults* res = result.add_results();
+    res->set_throughput( x.first );
+    res->set_delay( x.second );
+  }
+
+  return result;
 }
 
-AnswerBuffers::Outcome Evaluator::Outcome::DNA( void ) const
+/*AnswerBuffers::Outcome Evaluator::Outcome::DNA( void ) const
 {
   AnswerBuffers::Outcome ret;
 
@@ -85,9 +101,9 @@ AnswerBuffers::Outcome Evaluator::Outcome::DNA( void ) const
   ret.set_score( score );
 
   return ret;
-}
+}*/
 
-Evaluator::Outcome::Outcome( const AnswerBuffers::Outcome & dna )
+/*Evaluator::Outcome::Outcome( const AnswerBuffers::Outcome & dna )
   : score( dna.score() ),
     throughputs_delays(),
     used_whiskers()
@@ -100,7 +116,7 @@ Evaluator::Outcome::Outcome( const AnswerBuffers::Outcome & dna )
 
     throughputs_delays.emplace_back( NetConfig( x.config() ), tp_del );
   }
-}
+}*/
 
 Evaluator::Outcome Evaluator::score( WhiskerTree & run_whiskers,
 				     const bool trace, const unsigned int carefulness ) const
@@ -110,10 +126,10 @@ Evaluator::Outcome Evaluator::score( WhiskerTree & run_whiskers,
 
 
 Evaluator::Outcome Evaluator::score( WhiskerTree & run_whiskers,
-				     const unsigned int prng_seed,
-				     const vector<NetConfig> & configs,
-				     const bool trace,
-				     const unsigned int ticks_to_run )
+             const unsigned int prng_seed,
+             const vector<NetConfig> & configs,
+             const bool trace,
+             const unsigned int ticks_to_run )
 {
   PRNG run_prng( prng_seed );
 
@@ -128,6 +144,39 @@ Evaluator::Outcome Evaluator::score( WhiskerTree & run_whiskers,
     
     the_outcome.score += network1.senders().utility();
     the_outcome.throughputs_delays.emplace_back( x, network1.senders().throughputs_delays() );
+  }
+
+  the_outcome.used_whiskers = run_whiskers;
+
+  return the_outcome;
+}
+
+Evaluator::Outcome Evaluator::distributed_score( WhiskerTree & run_whiskers, const unsigned int carefulness ) const {
+  run_whiskers.reset_counts();
+
+  /* run tests */
+  Evaluator::Outcome the_outcome;
+
+  vector< string > jobs;
+  for ( auto & x : _configs ) {
+    ProblemBuffers::Problem dna = DNA( run_whiskers, x, TICK_COUNT * carefulness );
+    string job_str;
+    dna.SerializeToString( &job_str );
+    jobs.push_back( job_str );
+  }
+
+  auto results = communicator.assign_jobs( jobs );
+    
+  for ( auto & x : results ){
+    AnswerBuffers::Result res;
+    res.ParseFromString( x.get() );
+
+    the_outcome.score += res.score();
+    vector< pair< double, double > > results; // Format: (throughputs, delays)
+    for ( auto & y : res.results() ) {
+      results.emplace_back( make_pair( y.throughput(), y.delay() ) );
+    }
+    the_outcome.throughputs_delays.emplace_back( res.config(), results );
   }
 
   the_outcome.used_whiskers = run_whiskers;

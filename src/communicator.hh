@@ -23,7 +23,7 @@
 //
 // When a set of jobs (given as strings) is given to it, it creates a bunch of 
 // dummy 'future' values that are available when the computation is over 
-// (perhaps in a different process). It gives an illusion of multithreading, 
+// (perhaps in a different computer). It gives an illusion of multithreading, 
 // where processing can actually be distributed across several computers.
 class JobGeneratorCommunicator{
 public:
@@ -31,6 +31,9 @@ public:
 	typedef unsigned int ProcessorId;
 
 private:
+	// only one thread gets to assign jobs at a time
+	std::mutex assign_jobs_lock;
+
 	// controls access to processor_endpoints, num_active_endpoints
 	std::mutex modifying_endpoint_connections_lock;
 	std::thread connection_acceptor_thread;
@@ -60,13 +63,17 @@ private:
 	size_t process_job_response_str( std::string response );
 
 public:
-	JobGeneratorCommunicator( std::string endpoint_list_filename );
+	// Constructs the server that listens to 'port' for any processor 
+	// advertisements
+	JobGeneratorCommunicator( int port );
+	// each string in the input represents a job, which is sent 'as is' to the
+	// 'processors'. It returns a vector of future values that get a value when
+	// the remote processor finishes execution and returns the result
 	std::vector< std::future< std::string > > assign_jobs( std::vector< std::string > jobs );
 };
 
 class JobProcessorCommunicator{
 private:
-	//struct sockaddr_in server_addr;
 	int bound_socket;
 	// WARNING: Threads may write to the socket while the file descriptor is being polled.
 	// THIS COULD CAUSE PROBLEMS!

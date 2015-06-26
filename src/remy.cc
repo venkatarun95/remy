@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "communicator.hh"
 #include "ratbreeder.hh"
 
 using namespace std;
@@ -41,6 +42,8 @@ int main( int argc, char *argv[] )
     }
   }
 
+  JobGeneratorCommunicator communicator( 6001 );
+
   ConfigRange configuration_range;
   configuration_range.link_packets_per_ms = make_pair( 1.0, 2.0 ); /* 10 Mbps to 20 Mbps */
   configuration_range.rtt_ms = make_pair( 100, 200 ); /* ms */
@@ -48,7 +51,7 @@ int main( int argc, char *argv[] )
   configuration_range.mean_on_duration = 5000;
   configuration_range.mean_off_duration = 5000;
   //  configuration_range.lo_only = true;
-  RatBreeder breeder( configuration_range );
+  RatBreeder breeder( configuration_range, communicator );
 
   unsigned int run = 0;
 

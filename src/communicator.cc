@@ -2,8 +2,13 @@
 
 using namespace std;
 
-JobGeneratorCommunicator::JobGeneratorCommunicator( string endpoint_list_filename )
-  : modifying_endpoint_connections_lock(),
+/****************************************************************************/
+/*************************Job Generator Communicator*************************/
+/****************************************************************************/
+
+JobGeneratorCommunicator::JobGeneratorCommunicator( int port )
+  : assign_jobs_lock(),
+    modifying_endpoint_connections_lock(),
     connection_acceptor_thread(),
     processor_endpoints(),
     num_active_endpoints( 0 ),
@@ -12,16 +17,6 @@ JobGeneratorCommunicator::JobGeneratorCommunicator( string endpoint_list_filenam
     job_results(),
     job_results_listener_thread()
 {
-  // File Format:
-  //  First line: port_no
-  //  Subsequently lines equal in number to the number of processor endpoints of the following format:
-  //    ip_addr port
-
-  // read the file and make a list of endpoints
-  ifstream infile( endpoint_list_filename );
-  int port;
-  infile >> port;
-
   num_active_endpoints = 0;
 
   bound_socket = socket( AF_INET, SOCK_STREAM, 0 ); // for listening
@@ -44,7 +39,6 @@ JobGeneratorCommunicator::JobGeneratorCommunicator( string endpoint_list_filenam
   // spawn thraed to listen for connections
   connection_acceptor_thread = thread( [this]{
     while( true ){
-      cout << "Listening for connections..." << endl;
       int new_conn = accept( bound_socket, nullptr, nullptr );
 
       modifying_endpoint_connections_lock.lock();
@@ -52,6 +46,7 @@ JobGeneratorCommunicator::JobGeneratorCommunicator( string endpoint_list_filenam
       num_active_endpoints ++;
       assert( num_active_endpoints < 128-1 );
       modifying_endpoint_connections_lock.unlock();
+      cout << "Found new endpoint" << endl;
     }
   } );
 
@@ -83,7 +78,6 @@ void JobGeneratorCommunicator::create_and_send_jobs( unsigned int endpt, vector<
 
     ++ job_id;
     maxlen = max( maxlen, (int)all_jobs[i].size() + 1 );
-    cout << maxlen << endl;
   }
 
   char *res = new char[maxlen*(end_id - start_id + 1) + 32];
@@ -93,11 +87,6 @@ void JobGeneratorCommunicator::create_and_send_jobs( unsigned int endpt, vector<
   for( int i = start_id; i <= end_id; i++ ) {
     void * tmp __attribute((unused)) = memcpy( res+32+(i-start_id)*maxlen, all_jobs[i].c_str(), (int)all_jobs[i].size() );
   }
-  cout << "{ ";
-  for( int i = 0;i < maxlen*(end_id - start_id + 1) + 32; i++ ) {
-    cout<<res[i]<<"|";
-  }
-  cout << " }\n";
 
   int num_bytes_sent = send( endpt, res, maxlen*(end_id - start_id + 1) + 32, 0 );
   assert( num_bytes_sent == maxlen*(end_id - start_id + 1) + 32 );
@@ -105,6 +94,8 @@ void JobGeneratorCommunicator::create_and_send_jobs( unsigned int endpt, vector<
 }
 
 vector< future< string > > JobGeneratorCommunicator::assign_jobs( vector< string > jobs ){
+  // only one thread calls this function at a time. Should not affect performance much as this function exits quite quickly.
+  assign_jobs_lock.lock();
   while( true ){
     modifying_endpoint_connections_lock.lock();
     if( num_active_endpoints > 0 ){
@@ -117,21 +108,18 @@ vector< future< string > > JobGeneratorCommunicator::assign_jobs( vector< string
   }
   int num_jobs_per_processor = jobs.size() / num_active_endpoints;
   vector< future< string > > job_result_futures;
-  //cout << " 28596 " << processor_endpoints.size() << endl;
   modifying_endpoint_connections_lock.lock();
-  //cout << " 0385 ";
   for ( unsigned int i = 0; i < processor_endpoints.size(); i++ ) {
-    //cout << " 134086 ";
     if ( processor_endpoints[i].second == false ) // if endpoint is known to be not active
       continue;
     if ( i == processor_endpoints.size() - 1 )
       create_and_send_jobs( processor_endpoints[i].first, jobs, int(i*num_jobs_per_processor), jobs.size() - 1, job_result_futures ); // Warning: last guy could get a lot of work
     else
       create_and_send_jobs( processor_endpoints[i].first, jobs, int(i*num_jobs_per_processor), int((i + 1)*num_jobs_per_processor) - 1, job_result_futures );
-    //cout << " 134243 ";
   }
   modifying_endpoint_connections_lock.unlock();
 
+  assign_jobs_lock.unlock();
   return job_result_futures;
 }
 
@@ -195,7 +183,10 @@ void JobGeneratorCommunicator::listen_for_job_results(){
   });
 }
 
-/*****************************************************************************/
+
+/****************************************************************************/
+/*************************Job Processor Communicator*************************/
+/****************************************************************************/
 
 JobProcessorCommunicator::JobProcessorCommunicator( int server_port, string server_ip, function< string( string ) > s_processor_function)
   : bound_socket( 0 ),
@@ -220,7 +211,7 @@ JobProcessorCommunicator::JobProcessorCommunicator( int server_port, string serv
 }
 
 void JobProcessorCommunicator::start_listener_loop() {
-  const int buffer_size = 256;
+  const int buffer_size = 4096;
   char buffer_base[ buffer_size ], *buffer = buffer_base;
   // represents number of unprocessed bytes in buffer in units of sizeof(char)
   int buffer_remaining = 0;
@@ -246,7 +237,7 @@ void JobProcessorCommunicator::start_listener_loop() {
       poll( fds, 1, -1 ); // we poll so that threads can write to the socket while we are waiting for data
       assert( fds[0].revents & POLLIN );
       
-      socket_lock.lock();
+      socket_lock.lock(); // now the socket is locked, so worker threads cannot write back their results
       buffer_remaining = read( bound_socket, buffer_base, buffer_size ); //get more data
       socket_lock.unlock();
       buffer = buffer_base;
@@ -257,7 +248,7 @@ void JobProcessorCommunicator::start_listener_loop() {
       poll( fds, 1, -1 ); // we poll so that threads can write to the socket while we are waiting for data
       assert( fds[0].revents & POLLIN );
 
-      socket_lock.lock();
+      socket_lock.lock(); // now the socket is locked, so worker threads cannot write back their results
       buffer_remaining += read( bound_socket, buffer, buffer_size - buffer_remaining );
       socket_lock.unlock();
       fill_buffer = false;
@@ -313,13 +304,12 @@ void JobProcessorCommunicator::start_listener_loop() {
         memcpy( job_buffer, buffer + 16, max_job_len );
         job_buffer[max_job_len] = '\0';
         tmp_job_str = job_buffer; // indivudual jobs are null terminated
-
+        
         processing_threads_lock.lock();
         // this thread calls the processor_function, cleans up and sends the result back to the server.
         job_threads.insert( make_pair( job_id, make_pair( 
           thread( [this, &job_threads](int job_id, string job_str){
             string res = processor_function( job_str );
-            cout << "Finished job " << job_id << ". Got: " << res << flush;
 
             char temp_buf[33];
             sprintf( temp_buf, "%-16d%-16d", job_id, (int)res.size() );

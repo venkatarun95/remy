@@ -11,7 +11,7 @@ using namespace std;
 
 void RatBreeder::apply_best_split( WhiskerTree & whiskers, const unsigned int generation ) const
 {
-  const Evaluator eval( _range );
+  const Evaluator eval( _range, communicator );
   auto outcome( eval.score( whiskers, true ) );
 
   while ( 1 ) {
@@ -75,7 +75,7 @@ Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
   unsigned int generation = 0;
 
   while ( generation < 5 ) {
-    const Evaluator eval( _range );
+    const Evaluator eval( _range, communicator );
 
     auto outcome( eval.score( whiskers ) );
 
@@ -119,7 +119,7 @@ Evaluator::Outcome RatBreeder::improve( WhiskerTree & whiskers )
   apply_best_split( whiskers, generation );
 
   /* carefully evaluate what we have vs. the previous best */
-  const Evaluator eval2( _range );
+  const Evaluator eval2( _range, communicator );
   const auto new_score = eval2.score( whiskers, false, 10 );
   const auto old_score = eval2.score( input_whiskertree, false, 10 );
 
@@ -157,7 +157,7 @@ double WhiskerImprover::improve( Whisker & whisker_to_improve )
 				    WhiskerTree replaced_whiskertree( rat );
 				    const bool found_replacement __attribute((unused)) = replaced_whiskertree.replace( r );
 				    assert( found_replacement );
- 				    return make_pair( true, e.score( replaced_whiskertree ).score ); },
+ 				    return make_pair( true, e.distributed_score( replaced_whiskertree ).score ); },
 				  eval_, test_replacement, rat_ ) );
     } else {
       /* we already know the score */

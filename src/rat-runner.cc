@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "communicator.hh"
 #include "evaluator.hh"
 
 using namespace std;
@@ -74,7 +75,8 @@ int main( int argc, char *argv[] )
   configuration_range.mean_off_duration = mean_off_duration;
   configuration_range.lo_only = true;
 
-  Evaluator eval( configuration_range );
+  JobGeneratorCommunicator communicator( 6002 );
+  Evaluator eval( configuration_range, communicator );
   auto outcome = eval.score( whiskers, false, 10 );
   printf( "score = %f\n", outcome.score );
   double norm_score = 0;
